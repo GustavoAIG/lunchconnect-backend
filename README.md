@@ -12,11 +12,31 @@ Backend del proyecto LunchConnect: una plataforma web que conecta a profesionale
 
 ## 📐 Arquitectura
 Arquitectura en capas + Domain-Driven Design:
-src/main/java/com/lunchconnect/
-├── presentation/ # Controladores y DTOs
-├── application/ # Servicios y casos de uso
-├── domain/ # Entidades del negocio
-└── infrastructure/ # Seguridad, repos, correo, config
+lunchconnect-backend/
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/
+│   │   │       └── lunchconnect/
+│   │   │           ├── LunchconnectBackendApplication.java
+│   │   │           ├── domain/
+│   │   │           │   ├── model/
+│   │   │           │   ├── repository/
+│   │   │           │   └── service/
+│   │   │           ├── application/
+│   │   │           │   ├── dto/
+│   │   │           │   └── service/
+│   │   │           ├── infrastructure/
+│   │   │           │   ├── security/
+│   │   │           │   ├── config/
+│   │   │           │   └── exception/
+│   │   │           └── presentation/
+│   │   │               └── controller/
+│   │   └── resources/
+│   │       ├── application.properties
+│   │       └── application-dev.properties
+│   └── test/
+└── pom.xml
 
 
 ## 🚀 Configuración inicial
