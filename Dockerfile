@@ -1,24 +1,17 @@
 # --- FASE 1: CONSTRUCCIÓN (BUILD) ---
-# Usa una imagen base de JDK (Java Development Kit) para compilar.
+# Usamos una imagen que ya incluye el binario de Maven.
 FROM eclipse-temurin:21-jdk-alpine as build
 WORKDIR /workspace/app
 
-# Copiamos los scripts de Maven Wrapper necesarios para la compilación.
-# Los scripts 'mvnw' y 'mvnw.cmd' son necesarios para ejecutar Maven.
-COPY mvnw .
-COPY mvnw.cmd .
-
-# CRÍTICO: Creamos la estructura de carpetas y copiamos SÓLO el archivo de propiedades
-# necesario de forma explícita. Esto soluciona el error 'not found' al copiar el directorio (.mvn) completo.
-RUN mkdir -p .mvn/wrapper/
-COPY .mvn/wrapper/maven-wrapper.properties .mvn/wrapper/
+# Ya no copiamos 'mvnw', 'mvnw.cmd', ni la carpeta '.mvn' porque no los necesitamos.
 
 # Copiamos el archivo de configuración de Maven y el código fuente.
 COPY pom.xml .
 COPY src src
 
-# Ejecutamos la compilación. Esto descarga dependencias y crea el JAR.
-RUN ./mvnw install -DskipTests
+# CRÍTICO: Ejecutamos la compilación usando el binario 'mvn' (Maven Estándar)
+# en lugar del wrapper './mvnw'. Esto elimina la necesidad del archivo .mvn faltante.
+RUN mvn install -DskipTests
 # Extraemos las capas del JAR de Spring Boot para un cacheo más eficiente
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
 
