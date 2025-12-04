@@ -1,7 +1,12 @@
 # --- FASE 1: CONSTRUCCIÓN (BUILD) ---
-# Usamos una imagen que ya incluye el binario de Maven.
+# Usamos una imagen que ya incluye el binario de Java.
 FROM eclipse-temurin:21-jdk-alpine as build
 WORKDIR /workspace/app
+
+# --- PASO CRÍTICO DE CORRECCIÓN: INSTALAR MAVEN ---
+# Las imágenes 'alpine' no tienen 'mvn' por defecto.
+# Usamos 'apk add' (el gestor de paquetes de Alpine) para instalar Maven.
+RUN apk add --no-cache maven
 
 # Ya no copiamos 'mvnw', 'mvnw.cmd', ni la carpeta '.mvn' porque no los necesitamos.
 
@@ -10,7 +15,7 @@ COPY pom.xml .
 COPY src src
 
 # CRÍTICO: Ejecutamos la compilación usando el binario 'mvn' (Maven Estándar)
-# en lugar del wrapper './mvnw'. Esto elimina la necesidad del archivo .mvn faltante.
+# Ahora 'mvn' ya está instalado en el contenedor.
 RUN mvn install -DskipTests
 # Extraemos las capas del JAR de Spring Boot para un cacheo más eficiente
 RUN mkdir -p target/dependency && (cd target/dependency; jar -xf ../*.jar)
