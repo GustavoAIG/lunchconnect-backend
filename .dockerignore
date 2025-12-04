@@ -1,0 +1,17 @@
+Ignora el directorio 'target' que contiene los artefactos de la compilación.
+
+Esto evita copiar archivos innecesarios al contexto de Docker.
+
+target/
+
+Ignora las carpetas y archivos relacionados con herramientas de desarrollo
+
+y sistemas de control de versiones.
+
+.mvn/
+.log
+.git
+.gitignore
+.idea/
+.vscode/
+**/.iml
