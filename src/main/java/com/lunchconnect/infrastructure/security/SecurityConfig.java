@@ -59,7 +59,7 @@ public class SecurityConfig {
                 "http://localhost:5173",
                 "http://localhost:3000",
                 "http://localhost:8080",
-                "https://lunch-connect.vercel.app/", // <-- Reemplazar con la URL real de tu frontend
+                "https://lunch-connect.vercel.app", // <-- Reemplazar con la URL real de tu frontend
                 "http://127.0.0.1:5500",                  // <-- URL de previsualización de Canvas
                 "null"                                    // <-- Para entornos de prueba locales (como archivos HTML abiertos directamente)
         ));
