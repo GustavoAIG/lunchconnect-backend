@@ -35,8 +35,8 @@ public class AdminService {
         Long totalGrupos = grupoRepository.count();
         Long totalRestaurantes = restauranteRepository.count();
 
-        Long gruposActivos = grupoRepository.findByEstado(Grupo.EstadoGrupo.ACTIVO).size();
-        Long gruposCompletados = grupoRepository.findByEstado(Grupo.EstadoGrupo.COMPLETADO).size();
+        Long gruposActivos = Long.valueOf(grupoRepository.findByEstado(Grupo.EstadoGrupo.ACTIVO).size());
+        Long gruposCompletados = Long.valueOf(grupoRepository.findByEstado(Grupo.EstadoGrupo.COMPLETADO).size());
 
         // Usuarios con al menos un grupo
         Long usuariosActivos = usuarioRepository.findAll().stream()

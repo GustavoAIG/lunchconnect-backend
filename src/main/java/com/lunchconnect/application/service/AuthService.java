@@ -33,18 +33,15 @@ public class AuthService {
     private final EmailService emailService;
 
     public AuthResponse register(RegisterRequest request) {
-
         if (usuarioRepository.existsByCorreoElectronico(request.getCorreoElectronico())) {
             throw new RuntimeException("El correo electrónico ya está registrado");
         }
-
 
         if (request.getNombreUsuario() != null &&
                 !request.getNombreUsuario().isEmpty() &&
                 usuarioRepository.existsByNombreUsuario(request.getNombreUsuario())) {
             throw new RuntimeException("El nombre de usuario ya está en uso");
         }
-
 
         Usuario usuario = Usuario.builder()
                 .nombres(request.getNombres())
@@ -89,7 +86,6 @@ public class AuthService {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String token = tokenProvider.generateToken(authentication);
 
-
         Usuario usuario = usuarioRepository.findByCorreoElectronico(request.getCorreoOUsuario())
                 .or(() -> usuarioRepository.findByNombreUsuario(request.getCorreoOUsuario()))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -104,5 +100,26 @@ public class AuthService {
         Usuario usuario = usuarioRepository.findByCorreoElectronico(correoElectronico)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         return usuarioMapper.toDTO(usuario);
+    }
+
+    // ------------------ NUEVO MÉTODO ------------------
+    public String crearAdmin() {
+        if (usuarioRepository.existsByCorreoElectronico("admin@lunchconnect.com")) {
+            return "Admin ya existe";
+        }
+
+        Usuario admin = Usuario.builder()
+                .nombres("Admin")
+                .apellidos("Sistema")
+                .correoElectronico("admin@lunchconnect.com")
+                .nombreUsuario("admin")
+                .contrasenaHash(passwordEncoder.encode("admin123"))
+                .rubroProfesional("Administración")
+                .tituloPrincipal("Administrador")
+                .roles(new HashSet<>(Arrays.asList("USER", "ADMIN")))
+                .build();
+
+        usuarioRepository.save(admin);
+        return "Admin creado exitosamente";
     }
 }

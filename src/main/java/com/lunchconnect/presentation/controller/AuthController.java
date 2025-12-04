@@ -41,23 +41,8 @@ public class AuthController {
 
     @PostMapping("/create-admin")
     public ResponseEntity<String> createAdmin() {
-        // Solo para desarrollo - ELIMINAR EN PRODUCCIÓN
-        if (usuarioRepository.existsByCorreoElectronico("admin@lunchconnect.com")) {
-            return ResponseEntity.ok("Admin ya existe");
-        }
-
-        Usuario admin = Usuario.builder()
-                .nombres("Admin")
-                .apellidos("Sistema")
-                .correoElectronico("admin@lunchconnect.com")
-                .nombreUsuario("admin")
-                .contrasenaHash(passwordEncoder.encode("admin123"))
-                .rubroProfesional("Administración")
-                .tituloPrincipal("Administrador")
-                .roles(new HashSet<>(Arrays.asList("USER", "ADMIN")))
-                .build();
-
-        usuarioRepository.save(admin);
-        return ResponseEntity.ok("Admin creado exitosamente");
+        // Lógica movida a AuthService
+        String resultado = authService.crearAdmin();
+        return ResponseEntity.ok(resultado);
     }
 }
