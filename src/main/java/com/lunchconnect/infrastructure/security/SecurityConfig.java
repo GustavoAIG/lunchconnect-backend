@@ -53,10 +53,15 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+
+        // 🚨 CRÍTICO: Debes agregar la URL de tu frontend en Render y la URL de Canvas (127.0.0.1)
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:5173",
                 "http://localhost:3000",
-                "http://localhost:8080"
+                "http://localhost:8080",
+                "https://tu-frontend-aqui.onrender.com", // <-- Reemplazar con la URL real de tu frontend
+                "http://127.0.0.1:5500",                  // <-- URL de previsualización de Canvas
+                "null"                                    // <-- Para entornos de prueba locales (como archivos HTML abiertos directamente)
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
