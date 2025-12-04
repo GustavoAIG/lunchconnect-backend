@@ -12,7 +12,12 @@ import com.lunchconnect.domain.model.Usuario;
 import com.lunchconnect.domain.repository.GrupoRepository;
 import com.lunchconnect.domain.repository.RestauranteRepository;
 import com.lunchconnect.domain.repository.UsuarioRepository;
+import com.lunchconnect.infrastructure.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,16 +35,16 @@ public class GrupoService {
     private final RestauranteRepository restauranteRepository;
     private final GrupoMapper grupoMapper;
     private final UsuarioMapper usuarioMapper;
-
+    private final EmailService emailService;
 
     public GrupoDTO crearGrupo(CrearGrupoRequest request, Long usuarioId) {
 
         Usuario creador = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
 
         Restaurante restaurante = restauranteRepository.findById(request.getRestauranteId())
-                .orElseThrow(() -> new RuntimeException("Restaurante no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Restaurante no encontrado"));
 
 
         if (request.getFechaHoraAlmuerzo().isBefore(LocalDateTime.now())) {
@@ -60,6 +65,9 @@ public class GrupoService {
         grupo.agregarParticipante(creador);
 
         Grupo guardado = grupoRepository.save(grupo);
+
+        emailService.enviarEmailGrupoCreado(creador, guardado);
+
         return grupoMapper.toDTO(guardado);
     }
 
@@ -70,15 +78,27 @@ public class GrupoService {
                 .collect(Collectors.toList());
     }
 
+    public Page<GrupoDTO> obtenerGruposDisponiblesPaginados(int page, int size, String sortBy) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by(sortBy).ascending());
+
+        Page<Grupo> gruposPage = grupoRepository.findGruposDisponibles(
+                EstadoGrupo.ACTIVO,
+                LocalDateTime.now(),
+                pageable
+        );
+
+        return gruposPage.map(grupoMapper::toDTO);
+    }
+
     public GrupoDTO obtenerPorId(Long id) {
         Grupo grupo = grupoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Grupo no encontrado con id: " + id));
+                .orElseThrow(() -> new NotFoundException("Grupo no encontrado con id: " + id));
         return grupoMapper.toDTOConParticipantes(grupo);
     }
 
     public List<GrupoDTO> obtenerMisGrupos(Long usuarioId) {
         if (!usuarioRepository.existsById(usuarioId)) {
-            throw new RuntimeException("Usuario no encontrado");
+            throw new NotFoundException("Usuario no encontrado");
         }
         return grupoRepository.findMisGrupos(usuarioId).stream()
                 .map(grupoMapper::toDTO)
@@ -87,10 +107,10 @@ public class GrupoService {
 
     public GrupoDTO unirseAGrupo(Long grupoId, Long usuarioId) {
         Grupo grupo = grupoRepository.findById(grupoId)
-                .orElseThrow(() -> new RuntimeException("Grupo no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Grupo no encontrado"));
 
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
 
         if (grupo.getEstado() != EstadoGrupo.ACTIVO) {
@@ -111,15 +131,18 @@ public class GrupoService {
         grupo.agregarParticipante(usuario);
         Grupo actualizado = grupoRepository.save(grupo);
 
+        emailService.enviarEmailConfirmacionUnion(usuario, actualizado);
+        emailService.enviarEmailNuevoParticipante(grupo.getCreador(), usuario, actualizado);
+
         return grupoMapper.toDTO(actualizado);
     }
 
     public void salirDelGrupo(Long grupoId, Long usuarioId) {
         Grupo grupo = grupoRepository.findById(grupoId)
-                .orElseThrow(() -> new RuntimeException("Grupo no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Grupo no encontrado"));
 
         Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Usuario no encontrado"));
 
 
         if (!grupo.getParticipantes().contains(usuario)) {
@@ -137,7 +160,7 @@ public class GrupoService {
 
     public List<UsuarioDTO> obtenerParticipantes(Long grupoId) {
         Grupo grupo = grupoRepository.findById(grupoId)
-                .orElseThrow(() -> new RuntimeException("Grupo no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Grupo no encontrado"));
 
         return grupo.getParticipantes().stream()
                 .map(usuarioMapper::toDTO)
@@ -146,7 +169,7 @@ public class GrupoService {
 
     public void eliminarGrupo(Long grupoId, Long usuarioId) {
         Grupo grupo = grupoRepository.findById(grupoId)
-                .orElseThrow(() -> new RuntimeException("Grupo no encontrado"));
+                .orElseThrow(() -> new NotFoundException("Grupo no encontrado"));
 
 
         if (!grupo.getCreador().getId().equals(usuarioId)) {
@@ -154,5 +177,13 @@ public class GrupoService {
         }
 
         grupoRepository.delete(grupo);
+    }
+
+    public List<GrupoDTO> buscarGrupos(String nombreGrupo, String distrito, String categoria,
+                                       LocalDateTime fechaInicio, LocalDateTime fechaFin) {
+        return grupoRepository.buscarGrupos(nombreGrupo, distrito, categoria, fechaInicio, fechaFin)
+                .stream()
+                .map(grupoMapper::toDTO)
+                .collect(Collectors.toList());
     }
 }

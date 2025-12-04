@@ -76,6 +76,12 @@ public class Usuario {
     @Builder.Default
     private Set<Grupo> gruposCreados = new HashSet<>();
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "usuario_roles", joinColumns = @JoinColumn(name = "usuario_id"))
+    @Column(name = "rol")
+    @Builder.Default
+    private Set<String> roles = new HashSet<>();
+
     @CreationTimestamp
     @Column(name = "fecha_creacion", updatable = false)
     private LocalDateTime fechaCreacion;

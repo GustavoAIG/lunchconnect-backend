@@ -17,6 +17,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Arrays;
+import java.util.HashSet;
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -27,6 +30,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
     private final UsuarioMapper usuarioMapper;
+    private final EmailService emailService;
 
     public AuthResponse register(RegisterRequest request) {
 
@@ -51,10 +55,12 @@ public class AuthService {
                 .rubroProfesional(request.getRubroProfesional())
                 .tituloPrincipal(request.getTituloPrincipal())
                 .linkedin(request.getLinkedin())
+                .roles(new HashSet<>(Arrays.asList("USER")))
                 .build();
 
         Usuario guardado = usuarioRepository.save(usuario);
 
+        emailService.enviarEmailBienvenida(guardado);
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
