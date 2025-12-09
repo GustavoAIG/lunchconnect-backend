@@ -2,6 +2,7 @@ package com.lunchconnect.infrastructure.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,10 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+
+import org.springframework.security.core.GrantedAuthority;
+import java.util.stream.Collectors;
+import java.util.List;
 
 @Component
 public class JwtTokenProvider {
@@ -33,17 +38,33 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
+        // 💡 EXTRAER ROLES Y CONVERTIR A LISTA DE STRINGS
+        List<String> roles = authentication.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList());
+
         String token = Jwts.builder()
                 .subject(username)
                 .issuedAt(now)
                 .expiration(expiryDate)
+                // 💡 AÑADIR LA CLAIM PERSONALIZADA 'roles'
+                .claim("roles", roles)
                 .signWith(getSigningKey())
                 .compact();
 
         logger.debug("Token generado para usuario: {}", username);
+        logger.debug("Roles incluidos: {}", roles); // <--- Nuevo log
         logger.debug("Expira en: {}", expiryDate);
 
         return token;
+    }
+
+    public Claims getClaimsFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     public String getUsernameFromToken(String token) {

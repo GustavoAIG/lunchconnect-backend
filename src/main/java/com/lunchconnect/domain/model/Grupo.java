@@ -71,6 +71,12 @@ public class Grupo {
     @Column(name = "fecha_creacion", updatable = false)
     private LocalDateTime fechaCreacion;
 
+    // ----------------------------------------------------------------
+    // 💡 NUEVO CAMPO: Referencia al Chat Grupal
+    @Column(name = "chat_room_id", length = 255, unique = true)
+    private String chatRoomId;
+    // ----------------------------------------------------------------
+
     public enum EstadoGrupo {
         ACTIVO,
         LLENO,

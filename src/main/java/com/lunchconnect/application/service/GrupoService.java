@@ -7,9 +7,11 @@ import com.lunchconnect.application.mapper.GrupoMapper;
 import com.lunchconnect.application.mapper.UsuarioMapper;
 import com.lunchconnect.domain.model.Grupo;
 import com.lunchconnect.domain.model.Grupo.EstadoGrupo;
+import com.lunchconnect.domain.model.Mensaje;
 import com.lunchconnect.domain.model.Restaurante;
 import com.lunchconnect.domain.model.Usuario;
 import com.lunchconnect.domain.repository.GrupoRepository;
+import com.lunchconnect.domain.repository.MensajeRepository;
 import com.lunchconnect.domain.repository.RestauranteRepository;
 import com.lunchconnect.domain.repository.UsuarioRepository;
 import com.lunchconnect.infrastructure.exception.NotFoundException;
@@ -25,6 +27,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.lunchconnect.application.dto.ChatMessage; // Importar el DTO
+import com.lunchconnect.application.mapper.MensajeMapper; // Importar el nuevo Mapper
+
+
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -36,6 +42,9 @@ public class GrupoService {
     private final GrupoMapper grupoMapper;
     private final UsuarioMapper usuarioMapper;
     private final EmailService emailService;
+    private final ChatService chatService;
+    private final MensajeRepository mensajeRepository;
+    private final MensajeMapper mensajeMapper; // Necesitas un nuevo Mapper
 
     public GrupoDTO crearGrupo(CrearGrupoRequest request, Long usuarioId) {
 
@@ -65,7 +74,24 @@ public class GrupoService {
         grupo.agregarParticipante(creador);
 
         Grupo guardado = grupoRepository.save(grupo);
+        Long grupoId = guardado.getId();
+        // ----------------------------------------------------------------
+        // 💡 MODIFICACIÓN: Crear el chat usando el ID LONG REAL del grupo
+        // ----------------------------------------------------------------
+        // Pasamos el ID del grupo como referencia del chat room.
+        String chatRoomId = grupoId.toString();
 
+        // 💡 LLAMADA AL SERVICE: (La implementación de ChatService no necesita hacer nada aquí,
+        // solo se necesita la llamada para mantener la abstracción, pero ya tenemos el ID)
+        // chatService.createGroupChat(guardado.getNombreGrupo(), List.of(creador.getId()));
+
+        // Asignar el ID Long del grupo como el ChatRoomId
+        guardado.setChatRoomId(chatRoomId);
+        // ----------------------------------------------------------------
+
+        // Volver a guardar el grupo (si es necesario por la asignación de chatRoomId)
+    // Si la transacción está activa, el primer save debería manejarlo, pero un nuevo save es más seguro aquí:
+        grupoRepository.save(guardado);
         emailService.enviarEmailGrupoCreado(creador, guardado);
 
         return grupoMapper.toDTO(guardado);
@@ -131,6 +157,13 @@ public class GrupoService {
         grupo.agregarParticipante(usuario);
         Grupo actualizado = grupoRepository.save(grupo);
 
+        // ----------------------------------------------------------------
+        // 💡 PASO CLAVE 2: AÑADIR USUARIO AL CHAT
+        if (actualizado.getChatRoomId() != null) {
+            chatService.addUserToChat(actualizado.getChatRoomId(), usuario.getId());
+        }
+        // ----------------------------------------------------------------
+
         emailService.enviarEmailConfirmacionUnion(usuario, actualizado);
         emailService.enviarEmailNuevoParticipante(grupo.getCreador(), usuario, actualizado);
 
@@ -156,6 +189,13 @@ public class GrupoService {
 
         grupo.eliminarParticipante(usuario);
         grupoRepository.save(grupo);
+
+        // ----------------------------------------------------------------
+        // 💡 PASO CLAVE 3: REMOVER USUARIO DEL CHAT
+        if (grupo.getChatRoomId() != null) {
+            chatService.removeUserFromChat(grupo.getChatRoomId(), usuario.getId());
+        }
+        // ----------------------------------------------------------------
     }
 
     public List<UsuarioDTO> obtenerParticipantes(Long grupoId) {
@@ -176,6 +216,13 @@ public class GrupoService {
             throw new RuntimeException("Solo el creador puede eliminar el grupo");
         }
 
+        // ----------------------------------------------------------------
+        // 💡 PASO CLAVE 4: ELIMINAR EL CHAT
+        if (grupo.getChatRoomId() != null) {
+            chatService.deleteGroupChat(grupo.getChatRoomId());
+        }
+        // ----------------------------------------------------------------
+
         grupoRepository.delete(grupo);
     }
 
@@ -184,6 +231,22 @@ public class GrupoService {
         return grupoRepository.buscarGrupos(nombreGrupo, distrito, categoria, fechaInicio, fechaFin)
                 .stream()
                 .map(grupoMapper::toDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true) // Es solo lectura, optimiza rendimiento
+    public List<ChatMessage> obtenerHistorialChat(Long grupoId) {
+        // Validación: Asegurarse de que el grupo existe
+        if (!grupoRepository.existsById(grupoId)) {
+            throw new NotFoundException("Grupo no encontrado con id: " + grupoId);
+        }
+
+        // 1. Obtener mensajes persistidos del repositorio (ordenado por fecha)
+        List<Mensaje> mensajes = mensajeRepository.findByGrupoIdOrderByFechaEnvioAsc(grupoId);
+
+        // 2. Mapear la lista de entidades a la lista de DTOs usando el mapper
+        return mensajes.stream()
+                .map(mensajeMapper::toChatMessage)
                 .collect(Collectors.toList());
     }
 }
