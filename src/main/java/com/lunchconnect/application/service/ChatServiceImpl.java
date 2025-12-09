@@ -1,5 +1,6 @@
 package com.lunchconnect.application.service;
 
+import com.lunchconnect.application.dto.ChatMessage;
 import com.lunchconnect.domain.model.Grupo; // Importar
 import com.lunchconnect.domain.model.Mensaje; // Importar
 import com.lunchconnect.domain.model.Usuario; // Importar
@@ -60,7 +61,7 @@ public class ChatServiceImpl implements ChatService {
         String destination = "/topic/grupos/" + grupoId;
 
         // Aquí deberías crear un ChatMessage DTO para enviar, usando el mapper o la construcción directa
-        // (Asumiendo que tienes un método de conversión sencillo o un constructor en ChatMessage para esto)
+        // (Asumiendo que tienes un metodo de conversión sencillo o un constructor en ChatMessage para esto)
 
         // Simulación del DTO que se envía al frontend:
         ChatMessage systemMessage = ChatMessage.builder()
@@ -83,8 +84,8 @@ public class ChatServiceImpl implements ChatService {
     @Transactional // Asegura la creación del grupo y la persistencia del evento inicial
     public String createGroupChat(String groupName, List<Long> initialUserIds) {
         String chatRoomId = UUID.randomUUID().toString();
-        // Nota: Este método se llama antes de que el Grupo sea guardado en GrupoService,
-        // por lo que este método debe ser llamado *después* de guardar el grupo para tener el ID Long.
+        // Nota: Este metodo se llama antes de que el Grupo sea guardado en GrupoService,
+        // por lo que este metodo debe ser llamado *después* de guardar el grupo para tener el ID Long.
 
         // ASUMIMOS que el ID del chat room es el ID Long del grupo para esta persistencia
         // Si el ID es UUID, necesitarás una forma de mapear el UUID al Long ID del grupo.
@@ -107,7 +108,7 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional // Persiste el evento LEAVE
-    public void removeUserToChat(String chatRoomId, Long userId) {
+    public void removeUserFromChat(String chatRoomId, Long userId) {
         Long grupoId = Long.valueOf(chatRoomId); // Asumimos que chatRoomId es el ID Long del Grupo
 
         Usuario usuario = usuarioRepository.findById(userId)
