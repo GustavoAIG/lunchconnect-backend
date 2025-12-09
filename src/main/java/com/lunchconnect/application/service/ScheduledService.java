@@ -17,7 +17,6 @@ import java.util.List;
 public class ScheduledService {
 
     private final GrupoRepository grupoRepository;
-    private final EmailService emailService;
 
     /**
      * Se ejecuta cada hora para actualizar grupos que ya pasaron
@@ -64,12 +63,6 @@ public class ScheduledService {
             // Si el almuerzo es entre 23 y 25 horas en el futuro
             if (fechaGrupo.isAfter(ahora.plusHours(23)) &&
                     fechaGrupo.isBefore(dentroDe24Horas.plusHours(1))) {
-
-                // Enviar recordatorio a todos los participantes
-                grupo.getParticipantes().forEach(participante -> {
-                    emailService.enviarEmailRecordatorio(participante, grupo);
-                });
-
                 recordatoriosEnviados += grupo.getParticipantes().size();
             }
         }

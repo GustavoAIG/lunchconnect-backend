@@ -30,7 +30,6 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider tokenProvider;
     private final UsuarioMapper usuarioMapper;
-    private final EmailService emailService;
 
     public AuthResponse register(RegisterRequest request) {
         if (usuarioRepository.existsByCorreoElectronico(request.getCorreoElectronico())) {
@@ -57,7 +56,6 @@ public class AuthService {
 
         Usuario guardado = usuarioRepository.save(usuario);
 
-        emailService.enviarEmailBienvenida(guardado);
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(

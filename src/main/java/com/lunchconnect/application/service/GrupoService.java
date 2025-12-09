@@ -41,7 +41,6 @@ public class GrupoService {
     private final RestauranteRepository restauranteRepository;
     private final GrupoMapper grupoMapper;
     private final UsuarioMapper usuarioMapper;
-    private final EmailService emailService;
     private final ChatService chatService;
     private final MensajeRepository mensajeRepository;
     private final MensajeMapper mensajeMapper; // Necesitas un nuevo Mapper
@@ -92,7 +91,6 @@ public class GrupoService {
         // Volver a guardar el grupo (si es necesario por la asignación de chatRoomId)
     // Si la transacción está activa, el primer save debería manejarlo, pero un nuevo save es más seguro aquí:
         grupoRepository.save(guardado);
-        emailService.enviarEmailGrupoCreado(creador, guardado);
 
         return grupoMapper.toDTO(guardado);
     }
@@ -163,9 +161,6 @@ public class GrupoService {
             chatService.addUserToChat(actualizado.getChatRoomId(), usuario.getId());
         }
         // ----------------------------------------------------------------
-
-        emailService.enviarEmailConfirmacionUnion(usuario, actualizado);
-        emailService.enviarEmailNuevoParticipante(grupo.getCreador(), usuario, actualizado);
 
         return grupoMapper.toDTO(actualizado);
     }
