@@ -43,9 +43,6 @@ class GrupoServiceTest {
     @Mock
     private UsuarioMapper usuarioMapper;
 
-    @Mock
-    private EmailService emailService;
-
     @InjectMocks
     private GrupoService grupoService;
 
@@ -112,7 +109,6 @@ class GrupoServiceTest {
         assertNotNull(resultado);
         assertEquals("Almuerzo Test", resultado.getNombreGrupo());
         verify(grupoRepository, times(1)).save(any(Grupo.class));
-        verify(emailService, times(1)).enviarEmailGrupoCreado(any(), any());
     }
 
     @Test
@@ -168,8 +164,6 @@ class GrupoServiceTest {
         // Assert
         assertNotNull(resultado);
         verify(grupoRepository, times(1)).save(any(Grupo.class));
-        verify(emailService, times(1)).enviarEmailConfirmacionUnion(any(), any());
-        verify(emailService, times(1)).enviarEmailNuevoParticipante(any(), any(), any());
     }
 
     @Test
