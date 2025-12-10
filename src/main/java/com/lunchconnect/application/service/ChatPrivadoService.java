@@ -26,7 +26,7 @@ public class ChatPrivadoService {
      * Busca una conversación 1:1 existente o crea una nueva si no existe.
      * Esta lógica respeta la restricción UNIQUE del BD (LEAST/GREATEST).
      */
-    private ConversacionPrivada getOrCreateConversacion(Long usuarioId1, Long usuarioId2) {
+    public ConversacionPrivada getOrCreateConversacion(Long usuarioId1, Long usuarioId2) {
 
         return conversacionPrivadaRepository.findByUsuarios(usuarioId1, usuarioId2)
                 .orElseGet(() -> {
@@ -69,7 +69,7 @@ public class ChatPrivadoService {
         mensaje.setRemitente(remitente);
         mensaje.setContenido(mensajeDTO.getContenido());
         mensaje.setFechaEnvio(LocalDateTime.now());
-        mensaje.setEstado("ENVIADO"); // Coincide con el ENUM/CHECK de la BD
+        mensaje.setEstado(MensajePrivado.EstadoMensajePrivado.ENVIADO);
 
         return mensajePrivadoRepository.save(mensaje);
     }

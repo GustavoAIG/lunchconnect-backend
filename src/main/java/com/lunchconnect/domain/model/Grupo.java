@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
+
 @Entity
 @Table(name = "grupo")
 @Getter
@@ -71,6 +72,9 @@ public class Grupo {
     @Column(name = "fecha_creacion", updatable = false)
     private LocalDateTime fechaCreacion;
 
+    @Column(name = "chat_room_id", unique = true)
+    private String chatRoomId;
+    
     public enum EstadoGrupo {
         ACTIVO,
         LLENO,
