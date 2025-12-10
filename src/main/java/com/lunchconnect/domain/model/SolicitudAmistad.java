@@ -9,11 +9,11 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-        name = "solicitud_amistad",
-        // Esta restricción asegura que solo haya una solicitud pendiente entre dos IDs
-        uniqueConstraints = {
-                @UniqueConstraint(columnNames = {"remitente_id", "destinatario_id"})
-        }
+        name = "solicitud_amistad"
+        // *** IMPORTANTE: Se ha ELIMINADO la restricción única ***
+        // El control de que no haya solicitudes duplicadas (A->B y B->A)
+        // se maneja ahora completamente en el AmigosService mediante las consultas JPQL
+        // que verifican si ya existe una solicitud PENDIENTE o ACEPTADA en CUALQUIER dirección.
 )
 @Getter
 @Setter
@@ -26,7 +26,7 @@ public class SolicitudAmistad {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id_solicitud")
-    private Long idSolicitud; // Mapea a id_solicitud
+    private Long id; // CORREGIDO: Se usa 'id' en lugar de 'idSolicitud' para cumplir con la convención de JPA
 
     // Usuario que envía la solicitud (FK a usuario.id_usuario)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -41,12 +41,12 @@ public class SolicitudAmistad {
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 20)
     @Builder.Default
-    private EstadoSolicitud estado = EstadoSolicitud.PENDIENTE; // Mapea a estado
+    private EstadoSolicitud estado = EstadoSolicitud.PENDIENTE;
 
     @CreationTimestamp
     @Column(name = "fecha_envio", updatable = false)
-    private LocalDateTime fechaEnvio; // Mapea a fecha_envio
+    private LocalDateTime fechaEnvio;
 
     @Column(name = "fecha_respuesta")
-    private LocalDateTime fechaRespuesta; // Mapea a fecha_respuesta
+    private LocalDateTime fechaRespuesta;
 }

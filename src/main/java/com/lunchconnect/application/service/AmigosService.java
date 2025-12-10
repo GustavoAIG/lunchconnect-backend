@@ -5,13 +5,17 @@ import com.lunchconnect.domain.model.SolicitudAmistad;
 import com.lunchconnect.domain.model.Usuario;
 import com.lunchconnect.domain.repository.SolicitudAmistadRepository;
 import com.lunchconnect.domain.repository.UsuarioRepository;
+import com.lunchconnect.application.service.dto.UsuarioMinDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,7 +23,27 @@ public class AmigosService {
 
     private final SolicitudAmistadRepository solicitudAmistadRepository;
     private final UsuarioRepository usuarioRepository;
-    private final ChatPrivadoService chatPrivadoService; // Servicio inyectado para crear la conversación
+    private final ChatPrivadoService chatPrivadoService;
+
+    // -------------------------------------------------------------------------
+    // UTILITY: Seguridad y Mapeo
+    // -------------------------------------------------------------------------
+
+    /**
+     * Obtiene el ID del usuario autenticado actualmente (DEBES ADAPTAR ESTO).
+     */
+    public Long getCurrentAuthenticatedUserId() {
+        // !!! ATENCIÓN: Esta es una ASUNCIÓN. DEBES CAMBIAR esta lógica
+        // para obtener el ID del usuario real desde tu contexto de Spring Security (JWT).
+        try {
+            // Ejemplo si el principal es el ID del usuario (común con JWT)
+            return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        } catch (Exception e) {
+            // Ejemplo de fallback o error si no hay autenticación.
+            throw new SecurityException("Usuario no autenticado o ID no disponible.");
+            // Si quieres un ID fijo para pruebas rápidas: return 1L;
+        }
+    }
 
     /**
      * Busca y valida un usuario por ID.
@@ -30,11 +54,27 @@ public class AmigosService {
     }
 
     /**
-     * Envía una nueva solicitud de amistad.
-     * @param remitenteId ID del usuario que envía.
-     * @param destinatarioId ID del usuario que recibe.
-     * @return La solicitud de amistad guardada.
+     * Mapea el modelo Usuario a un DTO simplificado, usando los campos del Usuario.java proporcionado.
      */
+    private UsuarioMinDTO mapToMinDTO(Usuario usuario) {
+        // *** CORRECCIÓN APLICADA ***
+        // 1. name: Usamos getNombreCompleto()
+        String name = usuario.getNombreCompleto();
+
+        // 2. tag: Usamos getNombreUsuario()
+        String tag = usuario.getNombreUsuario() != null ? usuario.getNombreUsuario() : "N/A";
+
+        // 3. role: Usamos getTituloPrincipal()
+        String role = usuario.getTituloPrincipal() != null ? usuario.getTituloPrincipal() : "General";
+
+        // El status siempre es 'null' aquí y se define en los métodos de servicio (getUserFriends/searchUsers)
+        return new UsuarioMinDTO(usuario.getId(), name, tag, role, null);
+    }
+
+    // -------------------------------------------------------------------------
+    // LÓGICA DE NEGOCIO (FLUJO DE ESCRITURA: Enviar, Aceptar, Rechazar)
+    // -------------------------------------------------------------------------
+
     @Transactional
     public SolicitudAmistad enviarSolicitud(Long remitenteId, Long destinatarioId) {
         if (remitenteId.equals(destinatarioId)) {
@@ -44,15 +84,14 @@ public class AmigosService {
         Usuario remitente = findUsuarioById(remitenteId, "Remitente");
         Usuario destinatario = findUsuarioById(destinatarioId, "Destinatario");
 
-        // 1. Prevenir si ya existe una solicitud PENDIENTE (en cualquier dirección)
         if (solicitudAmistadRepository.existeSolicitudPendienteEntre(remitenteId, destinatarioId)) {
             throw new IllegalStateException("Ya existe una solicitud pendiente entre estos usuarios.");
         }
 
-        // 2. Prevenir si ya son amigos (asumiendo que ACCEPTED significa que ya se creó el chat)
-        // Podrías añadir una lógica más robusta aquí si es necesario.
+        if (solicitudAmistadRepository.sonAmigos(remitenteId, destinatarioId)) {
+            throw new IllegalStateException("Ya son amigos.");
+        }
 
-        // 3. Crear y guardar nueva solicitud
         SolicitudAmistad solicitud = new SolicitudAmistad();
         solicitud.setRemitente(remitente);
         solicitud.setDestinatario(destinatario);
@@ -62,19 +101,11 @@ public class AmigosService {
         return solicitudAmistadRepository.save(solicitud);
     }
 
-    /**
-     * Acepta una solicitud de amistad.
-     * CRÍTICO: Al aceptar, se garantiza la existencia de la ConversacionPrivada.
-     * @param solicitudId ID de la solicitud a aceptar.
-     * @param usuarioQueAceptaId ID del usuario que realiza la acción (debe ser el destinatario).
-     * @return La solicitud actualizada.
-     */
     @Transactional
     public SolicitudAmistad aceptarSolicitud(Long solicitudId, Long usuarioQueAceptaId) {
         SolicitudAmistad solicitud = solicitudAmistadRepository.findById(solicitudId)
                 .orElseThrow(() -> new NoSuchElementException("Solicitud no encontrada."));
 
-        // 1. Validación de Seguridad y Estado
         if (!solicitud.getDestinatario().getId().equals(usuarioQueAceptaId)) {
             throw new SecurityException("No estás autorizado a responder esta solicitud.");
         }
@@ -82,13 +113,11 @@ public class AmigosService {
             throw new IllegalStateException("La solicitud ya fue respondida.");
         }
 
-        // 2. Actualizar estado
         solicitud.setEstado(EstadoSolicitud.ACEPTADA);
         solicitud.setFechaRespuesta(LocalDateTime.now());
         SolicitudAmistad solicitudAceptada = solicitudAmistadRepository.save(solicitud);
 
-        // 3. CREAR OBTENER LA CONVERSACIÓN PRIVADA
-        // Llama al servicio de chat para asegurarse de que el registro 1:1 exista.
+        // Lógica crítica: Crear el chat 1:1 al hacerse amigos
         chatPrivadoService.getOrCreateConversacion(
                 solicitud.getRemitente().getId(),
                 solicitud.getDestinatario().getId()
@@ -97,12 +126,6 @@ public class AmigosService {
         return solicitudAceptada;
     }
 
-    /**
-     * Marca una solicitud como RECHAZADA.
-     * @param solicitudId ID de la solicitud.
-     * @param usuarioQueRechazaId ID del usuario que rechaza.
-     * @return La solicitud actualizada.
-     */
     @Transactional
     public SolicitudAmistad rechazarSolicitud(Long solicitudId, Long usuarioQueRechazaId) {
         SolicitudAmistad solicitud = solicitudAmistadRepository.findById(solicitudId)
@@ -121,14 +144,93 @@ public class AmigosService {
         return solicitudAmistadRepository.save(solicitud);
     }
 
+    // -------------------------------------------------------------------------
+    // LÓGICA DE NEGOCIO (FLUJO DE LECTURA: Amigos, Pendientes, Buscar)
+    // -------------------------------------------------------------------------
+
     /**
      * Obtiene todas las solicitudes de amistad PENDIENTES dirigidas al usuario.
      */
     @Transactional(readOnly = true)
-    public List<SolicitudAmistad> obtenerPendientesRecibidas(Long usuarioId) {
-        return solicitudAmistadRepository.findByDestinatario_IdAndEstado(usuarioId, EstadoSolicitud.PENDIENTE);
+    public List<UsuarioMinDTO> getPendingFriendRequests(Long destinatarioId) {
+        // Buscamos las solicitudes y devolvemos los datos del REMITENTE
+        return solicitudAmistadRepository
+                .findByDestinatario_IdAndEstado(destinatarioId, EstadoSolicitud.PENDIENTE)
+                .stream()
+                .map(solicitud -> {
+                    UsuarioMinDTO dto = mapToMinDTO(solicitud.getRemitente());
+                    // Devolvemos el ID de la solicitud en el campo 'id' del DTO,
+                    // y el estado "PENDIENTE_RECIBIDA" para el frontend.
+                    return new UsuarioMinDTO(solicitud.getId(), dto.name(), dto.tag(), dto.role(), "PENDIENTE_RECIBIDA");
+                })
+                .collect(Collectors.toList());
     }
 
-    // 💡 NOTA: Obtener la lista completa de amigos requiere una consulta más compleja
-    // que une las solicitudes donde el estado es ACEPTADA, buscando el usuario en remitente O destinatario.
+    /**
+     * Obtiene la lista de usuarios que son amigos del usuario actual.
+     */
+    @Transactional(readOnly = true)
+    public List<UsuarioMinDTO> getUserFriends(Long userId) {
+        // Asume que SolicitudAmistadRepository.findAcceptedFriends(userId) está implementado
+        // para buscar solicitudes ACEPTADAS donde userId es remitente O destinatario.
+        List<SolicitudAmistad> acceptedRequests = solicitudAmistadRepository.findAcceptedFriends(userId);
+
+        return acceptedRequests.stream()
+                .map(solicitud -> {
+                    // Selecciona el usuario que NO es el usuario actual
+                    Usuario friend = solicitud.getRemitente().getId().equals(userId)
+                            ? solicitud.getDestinatario()
+                            : solicitud.getRemitente();
+                    return mapToMinDTO(friend);
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Busca usuarios por término y determina el estado de amistad.
+     */
+    @Transactional(readOnly = true)
+    public List<UsuarioMinDTO> searchUsers(Long currentUserId, String searchTerm) {
+        // 1. Buscar usuarios que coincidan con el término (excluyendo al usuario actual)
+        List<Usuario> potentialFriends = usuarioRepository
+                .searchByUsernameOrTag(searchTerm) // DEBES IMPLEMENTAR ESTE MÉTODO EN TU REPOSITORY
+                .stream()
+                .filter(u -> !u.getId().equals(currentUserId)) // Excluirse a sí mismo
+                .collect(Collectors.toList());
+
+        if (potentialFriends.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. Obtener estados de amistad en masa (optimización de DB)
+        Set<Long> potentialFriendIds = potentialFriends.stream()
+                .map(Usuario::getId)
+                .collect(Collectors.toSet());
+
+        // Asume un método en el Repository que retorna [OtroUsuarioId, Estado]
+        List<Object[]> friendshipStatuses = solicitudAmistadRepository
+                .findFriendshipStatusForUsers(currentUserId, potentialFriendIds);
+
+        var statusMap = friendshipStatuses.stream()
+                .collect(Collectors.toMap(
+                        arr -> (Long) arr[0],
+                        arr -> (String) arr[1]
+                ));
+
+        // 3. Mapear a DTO con el estado
+        return potentialFriends.stream()
+                .map(user -> {
+                    String status = statusMap.getOrDefault(user.getId(), "NINGUNO");
+                    UsuarioMinDTO dto = mapToMinDTO(user);
+
+                    return new UsuarioMinDTO(
+                            dto.id(),
+                            dto.name(),
+                            dto.tag(),
+                            dto.role(),
+                            status.equals("ACEPTADA") ? "AMIGO" : (status.equals("PENDIENTE") ? "SOLICITUD_PENDIENTE" : "NINGUNO")
+                    );
+                })
+                .collect(Collectors.toList());
+    }
 }

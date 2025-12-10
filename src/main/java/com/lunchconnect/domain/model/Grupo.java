@@ -74,7 +74,7 @@ public class Grupo {
 
     @Column(name = "chat_room_id", unique = true)
     private String chatRoomId;
-    
+
     public enum EstadoGrupo {
         ACTIVO,
         LLENO,
