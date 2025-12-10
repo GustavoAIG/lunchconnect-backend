@@ -101,4 +101,15 @@ public class JwtTokenProvider {
         }
         return false;
     }
+
+    public Long getUserIdFromToken(String token) {
+        String userIdString = getUsernameFromToken(token);
+        try {
+            // Convierte el ID (que es el subject del token) a Long
+            return Long.parseLong(userIdString);
+        } catch (NumberFormatException e) {
+            logger.error("El subject del token no es un Long válido: {}", userIdString);
+            throw new MalformedJwtException("ID de usuario en el token no es un número válido.");
+        }
+    }
 }

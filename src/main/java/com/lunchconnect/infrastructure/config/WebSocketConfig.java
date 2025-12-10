@@ -1,27 +1,39 @@
-package com.lunchconnect.infrastructure.config; // O un paquete de configuración similar
+package com.lunchconnect.infrastructure.config;
 
+// 💡 IMPORTACIONES CORREGIDAS AL PAQUETE infrastructure.security
+import com.lunchconnect.infrastructure.security.WebSocketAuthInterceptor;
+import com.lunchconnect.infrastructure.security.JwtTokenProvider;
+
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+// ... (Otras importaciones) ...
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 @Configuration
-@EnableWebSocketMessageBroker // 💡 HABILITA LA CREACIÓN DE SIMP MESSAGING TEMPLATE
+@EnableWebSocketMessageBroker
+@RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    // Inyección con la clase correcta
+    private final JwtTokenProvider tokenProvider;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        // Prefijo para suscripciones de clientes (ej: /topic/grupos/123)
-        config.enableSimpleBroker("/topic");
-        // Prefijo para endpoints a donde los clientes enviarán mensajes (ej: /app/chat)
+        config.enableSimpleBroker("/topic", "/user");
         config.setApplicationDestinationPrefixes("/app");
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // Endpoint para la conexión inicial de WebSocket
+
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("*"); // Permite cualquier origen (CORS)
+                .setAllowedOriginPatterns("*")
+                .withSockJS()
+                // Creación del interceptor con el tokenProvider inyectado
+                .setInterceptors(new WebSocketAuthInterceptor(tokenProvider));
     }
 }

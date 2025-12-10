@@ -18,23 +18,21 @@ public class Mensaje {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id_mensaje") // Coherencia con la base de datos
+    private Long idMensaje;      // Cambio de 'id' a 'idMensaje' (Opcional, pero recomendado)
 
-    // 💡 El ID del grupo al que pertenece el mensaje (Foreign Key)
-    // Usamos el ID del grupo (Long) para mapear el chatRoomId de tu modelo Grupo
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "grupo_id", nullable = false)
     private Grupo grupo;
 
-    // 💡 El usuario que envió el mensaje (Foreign Key)
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "remitente_id", nullable = false)
     private Usuario remitente;
 
-    @Lob // Para permitir mensajes más largos
-    @Column(nullable = false)
+    // 💡 CAMBIO: Usar columnDefinition="TEXT" para mapear el tipo corregido en la BD
+    @Column(name = "contenido", columnDefinition = "TEXT", nullable = false)
     private String contenido;
 
     @Enumerated(EnumType.STRING)
