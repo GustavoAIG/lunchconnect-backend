@@ -96,7 +96,6 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider())
 
                 // 🛑 CORRECCIÓN DE FILTROS: Usa addFilterAfter para asegurar la secuencia
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class) // 1. Rate Limit
                 .addFilterAfter(jwtAuthenticationFilter, rateLimitFilter.getClass())        // 2. JWT Validation
 
                 // Si la línea .addFilterAfter falla, usa la original, pero ASEGÚRATE de la secuencia:
