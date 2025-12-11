@@ -7,6 +7,7 @@ import com.lunchconnect.domain.repository.SolicitudAmistadRepository;
 import com.lunchconnect.domain.repository.UsuarioRepository;
 import com.lunchconnect.application.service.dto.UsuarioMinDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,10 +18,13 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.lunchconnect.infrastructure.security.CustomUserDetailsService;
+
 @Service
 @RequiredArgsConstructor
 public class AmigosService {
 
+    private final CustomUserDetailsService userDetailsService;
     private final SolicitudAmistadRepository solicitudAmistadRepository;
     private final UsuarioRepository usuarioRepository;
     private final ChatPrivadoService chatPrivadoService;
@@ -32,17 +36,38 @@ public class AmigosService {
     /**
      * Obtiene el ID del usuario autenticado actualmente (DEBES ADAPTAR ESTO).
      */
+    // Asegúrate de que este método está en AmigosService.java
+
+    // Asegúrate de que este método está en AmigosService.java
+
     public Long getCurrentAuthenticatedUserId() {
-        // !!! ATENCIÓN: Esta es una ASUNCIÓN. DEBES CAMBIAR esta lógica
-        // para obtener el ID del usuario real desde tu contexto de Spring Security (JWT).
-        try {
-            // Ejemplo si el principal es el ID del usuario (común con JWT)
-            return (Long) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        } catch (Exception e) {
-            // Ejemplo de fallback o error si no hay autenticación.
-            throw new SecurityException("Usuario no autenticado o ID no disponible.");
-            // Si quieres un ID fijo para pruebas rápidas: return 1L;
+
+        // 1. Obtener el objeto Principal del contexto (que es el UserDetails)
+        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (principal instanceof UserDetails) {
+            // 2. Extraer el "username" (que es el correo electrónico o nombre de usuario)
+            String usernameOrEmail = ((UserDetails) principal).getUsername();
+
+            // 3. Usar tu CustomUserDetailsService para cargar la entidad Usuario y obtener el ID
+            //    (Necesitas inyectar el CustomUserDetailsService o UsuarioRepository aquí)
+
+            // --- METODO RECOMENDADO ---
+
+            Usuario usuario = userDetailsService.loadUserEntityByUsername(usernameOrEmail);
+
+            // 4. Devolver el ID real de la entidad
+            return usuario.getId();
+
+        } else if (principal instanceof String) {
+            // Fallback si el principal es solo una cadena (ej. el username)
+            String usernameOrEmail = (String) principal;
+            Usuario usuario = userDetailsService.loadUserEntityByUsername(usernameOrEmail);
+            return usuario.getId();
         }
+
+        // Si no hay autenticación o es anónima.
+        throw new SecurityException("No se encontró un usuario autenticado o el principal es desconocido.");
     }
 
     /**
