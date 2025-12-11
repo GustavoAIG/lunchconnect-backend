@@ -8,6 +8,7 @@ import com.lunchconnect.domain.repository.GrupoRepository; // Importar
 import com.lunchconnect.domain.repository.MensajeRepository; // Importar
 import com.lunchconnect.domain.repository.UsuarioRepository; // Importar
 import com.lunchconnect.infrastructure.exception.NotFoundException; // Importar
+import com.lunchconnect.infrastructure.websocket.ChatWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -29,41 +30,26 @@ public class ChatServiceImpl implements ChatService {
     private final MensajeRepository mensajeRepository;
     private final GrupoRepository grupoRepository;
     private final UsuarioRepository usuarioRepository;
-
+    private final ChatWebSocketHandler chatWebSocketHandler; // inyect
     private static final String SYSTEM_SENDER = "SYSTEM"; // Remitente para mensajes del sistema
 
     // Método auxiliar para construir y guardar un mensaje de sistema
     @Transactional // Asegura que la persistencia ocurre
-    private void persistAndBroadcastSystemMessage(
-            Long grupoId,
-            String content,
-            Mensaje.TipoMensaje tipo) {
-
+    private void persistAndBroadcastSystemMessage(Long grupoId, String content, Mensaje.TipoMensaje tipo) {
         Grupo grupo = grupoRepository.findById(grupoId)
-                .orElseThrow(() -> new NotFoundException("Grupo no encontrado para chat ID: " + grupoId));
+                .orElseThrow(() -> new NotFoundException("Grupo no encontrado"));
 
-        // El remitente SYSTEM necesita un ID de usuario.
-        // Usamos el creador del grupo (o puedes crear un usuario "Sistema" dedicado).
-        // Usaremos el creador del grupo como el remitente del mensaje de SISTEMA
         Usuario remitenteSistema = grupo.getCreador();
 
-        // 1. Persistir el mensaje
         Mensaje mensaje = Mensaje.builder()
                 .grupo(grupo)
-                .remitente(remitenteSistema) // Usar un usuario existente o "Sistema"
+                .remitente(remitenteSistema)
                 .contenido(content)
                 .tipo(tipo)
                 .build();
 
         mensajeRepository.save(mensaje);
 
-        // 2. Enviar el broadcast por WebSocket
-        String destination = "/topic/grupos/" + grupoId;
-
-        // Aquí deberías crear un ChatMessage DTO para enviar, usando el mapper o la construcción directa
-        // (Asumiendo que tienes un metodo de conversión sencillo o un constructor en ChatMessage para esto)
-
-        // Simulación del DTO que se envía al frontend:
         ChatMessage systemMessage = ChatMessage.builder()
                 .grupoId(grupoId.toString())
                 .senderId(remitenteSistema.getId().toString())
@@ -72,8 +58,8 @@ public class ChatServiceImpl implements ChatService {
                 .type(ChatMessage.MessageType.valueOf(tipo.name()))
                 .build();
 
-        messagingTemplate.convertAndSend(destination, systemMessage);
-        log.info("Evento persistido ({}) y enviado a tópico {}", tipo, grupoId);
+        // Enviar a través del handler
+        chatWebSocketHandler.broadcastToGroup(grupoId, systemMessage);
     }
 
     // ----------------------------------------------------------------------------------

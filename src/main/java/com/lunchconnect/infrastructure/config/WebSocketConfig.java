@@ -1,11 +1,10 @@
-package com.lunchconnect.infrastructure.config;
+package com.lunchconnect.infrastructure.websocket;
 
-import com.lunchconnect.infrastructure.websocket.ChatWebSocketHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
-import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
-import lombok.RequiredArgsConstructor;
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
 @Configuration
 @EnableWebSocket
@@ -17,6 +16,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(chatWebSocketHandler, "/ws")
-                .setAllowedOrigins("*"); // o las URLs de tu frontend
+                .setAllowedOrigins("*"); // Ajusta a tu frontend
     }
 }
