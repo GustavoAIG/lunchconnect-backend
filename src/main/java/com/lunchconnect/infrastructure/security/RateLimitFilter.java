@@ -16,6 +16,8 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.core.annotation.Order;
+@Order(1)
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
 
