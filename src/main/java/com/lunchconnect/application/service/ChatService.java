@@ -1,8 +1,12 @@
 package com.lunchconnect.application.service; // O en 'infrastructure'
 
+import com.lunchconnect.application.dto.ChatMessage;
+
 import java.util.List;
 
 public interface ChatService {
+
+
     /**
      * Crea un canal de chat para un nuevo almuerzo de networking.
      * @param groupName El nombre del almuerzo.
@@ -19,4 +23,6 @@ public interface ChatService {
 
     // Nuevo metodo para eliminar el chat cuando el grupo es eliminado
     void deleteGroupChat(String chatRoomId);
+
+    void sendMessage(ChatMessage chatMessage);
 }

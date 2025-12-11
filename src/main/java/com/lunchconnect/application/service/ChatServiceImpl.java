@@ -109,4 +109,11 @@ public class ChatServiceImpl implements ChatService {
         // mensajeRepository.deleteAllByGrupoId(Long.valueOf(chatRoomId)); // Necesitaría este método en el repo
         log.warn("Solicitud de eliminación de chat {}. La eliminación de mensajes debe ser manual o en cascada.", chatRoomId);
     }
+
+    @Override
+    public void sendMessage(ChatMessage chatMessage) {
+        // El envío real se hace usando ChatWebSocketHandler
+        chatWebSocketHandler.handleTextMessageDirectly(chatMessage);
+    }
+
 }

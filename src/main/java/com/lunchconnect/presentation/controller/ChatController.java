@@ -1,80 +1,50 @@
 package com.lunchconnect.presentation.controller;
 
 import com.lunchconnect.application.dto.ChatMessage;
-import com.lunchconnect.domain.model.Grupo;
-import com.lunchconnect.domain.model.Mensaje;
+import com.lunchconnect.application.service.ChatService;
 import com.lunchconnect.domain.model.Usuario;
-import com.lunchconnect.domain.repository.GrupoRepository;
-import com.lunchconnect.domain.repository.MensajeRepository;
 import com.lunchconnect.domain.repository.UsuarioRepository;
 import com.lunchconnect.infrastructure.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.handler.annotation.MessageMapping;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
-import org.springframework.stereotype.Controller;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.transaction.annotation.Transactional; // Importante para la persistencia
+import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
-
-@Controller
+@RestController
+@RequestMapping("/api/chat")
 @RequiredArgsConstructor
 @Slf4j
 public class ChatController {
 
-    // SimpMessagingTemplate: Permite enviar mensajes a tópicos de WebSocket.
-    private final SimpMessagingTemplate messagingTemplate;
-
-    private final MensajeRepository mensajeRepository;
+    private final ChatService chatService;
     private final UsuarioRepository usuarioRepository;
-    private final GrupoRepository grupoRepository;
 
     /**
-     * Maneja los mensajes entrantes de los clientes.
-     * * El cliente envía a: /app/chat.sendMessage
-     * Spring lo reenvía al broker a: /topic/grupos/{grupoId}
-     * * @param chatMessage Mensaje enviado por el cliente.
-     * @param userDetails Información del usuario autenticado vía JWT.
+     * Endpoint para enviar mensajes.
+     * El frontend envía a /api/chat/send
      */
-    @MessageMapping("/chat.sendMessage")
-    @Transactional // Asegura que la persistencia y la notificación se manejen bien
-    public void sendMessage(
-            ChatMessage chatMessage,
+    @PostMapping("/send")
+    public ResponseEntity<Void> sendMessage(
+            @RequestBody ChatMessage chatMessage,
             @AuthenticationPrincipal UserDetails userDetails) {
 
-        if (userDetails == null) return;
+        if (userDetails == null) {
+            return ResponseEntity.status(401).build();
+        }
 
-        // 1. Obtener Entidades (Usuario y Grupo)
-        // El subject del JWT es el nombre/correo, que usamos para buscar el Usuario
+        // 1. Obtener remitente
         Usuario remitente = usuarioRepository.findByCorreoElectronico(userDetails.getUsername())
                 .or(() -> usuarioRepository.findByNombreUsuario(userDetails.getUsername()))
-                .orElseThrow(() -> new NotFoundException("Remitente no encontrado en DB"));
+                .orElseThrow(() -> new NotFoundException("Remitente no encontrado"));
 
-        // El grupoId del DTO se asume que es el ID Long del grupo.
-        Long grupoIdLong = Long.valueOf(chatMessage.getGrupoId());
-        Grupo grupo = grupoRepository.findById(grupoIdLong)
-                .orElseThrow(() -> new NotFoundException("Grupo de chat no encontrado"));
+        chatMessage.setSenderId(remitente.getId().toString());
 
-        // 2. Persistir el Mensaje en la DB
-        Mensaje mensaje = Mensaje.builder()
-                .grupo(grupo)
-                .remitente(remitente)
-                .contenido(chatMessage.getContent())
-                .tipo(Mensaje.TipoMensaje.CHAT)
-                .build();
+        // 2. Delegar al servicio de chat (que se encargará de persistir y enviar por WS)
+        chatService.sendMessage(chatMessage);
 
-        mensajeRepository.save(mensaje);
-
-        // 3. Rellenar y enviar el DTO (ChatMessage) a través de WebSocket
-        chatMessage.setSenderId(remitente.getId().toString()); // Usamos el ID Long para el frontend
-        chatMessage.setTimestamp(mensaje.getFechaEnvio()); // Usamos el timestamp de la DB
-        chatMessage.setType(ChatMessage.MessageType.CHAT);
-
-        String destination = "/topic/grupos/" + chatMessage.getGrupoId();
-        messagingTemplate.convertAndSend(destination, chatMessage);
-
-        log.info("Mensaje persistido y enviado a tópico {} por usuario {}", chatMessage.getGrupoId(), remitente.getId());
+        log.info("Mensaje enviado por usuario {} al grupo {}", remitente.getId(), chatMessage.getGrupoId());
+        return ResponseEntity.ok().build();
     }
 }
