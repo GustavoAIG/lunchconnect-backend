@@ -93,15 +93,15 @@ public class SecurityConfig {
                         // Todas las demás requieren autenticación, incluyendo /api/amigos/**
                         .anyRequest().authenticated()
                 )
-                .authenticationProvider(authenticationProvider())
+                // 🛑 ELIMINAR ESTA LÍNEA DE LA CADENA DE FILTROS:
+                // .authenticationProvider(authenticationProvider())
 
-                // 🛑 COMENTA TEMPORALMENTE AMBOS FILTROS PERSONALIZADOS
-                //.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                // 1. Añadir el filtro JWT
+                // Usamos addFilterBefore para asegurar que va antes del filtro de password
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // NOTA: Si descomentas rateLimitFilter, debería ir así:
-                // .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-                // .addFilterAfter(jwtAuthenticationFilter, RateLimitFilter.class)
+                // 2. Si quieres el Rate Limit, ponlo antes del JWT
+                // .addFilterBefore(rateLimitFilter, jwtAuthenticationFilter.class)
 
                 .build();
     }
