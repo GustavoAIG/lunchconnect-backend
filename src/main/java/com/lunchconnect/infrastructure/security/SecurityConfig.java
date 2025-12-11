@@ -94,12 +94,11 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
+                // 1. Añadir el filtro de Rate Limit primero (más alta prioridad)
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // 🛑 CORRECCIÓN DE FILTROS: Usa addFilterAfter para asegurar la secuencia
-                .addFilterAfter(jwtAuthenticationFilter, rateLimitFilter.getClass())        // 2. JWT Validation
-
-                // Si la línea .addFilterAfter falla, usa la original, pero ASEGÚRATE de la secuencia:
-                // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // 2. Añadir el filtro JWT
+                .addFilterAfter(jwtAuthenticationFilter, RateLimitFilter.class) // <--- ¡Importante!
 
                 .build();
     }
