@@ -44,10 +44,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 if (tokenProvider.validateToken(jwt)) {
                     String username = tokenProvider.getUsernameFromToken(jwt);
 
-                    // ¡¡¡LÍNEA CRÍTICA AÑADIDA!!!
-                    logger.error("!!! VALIDACIÓN FALLIDA - USUARIO EXTRAÍDO DEL TOKEN: {}", username);
-                    // ¡¡¡LÍNEA CRÍTICA AÑADIDA!!!
-
                     logger.debug("Token válido para usuario: {}", username);
 
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);

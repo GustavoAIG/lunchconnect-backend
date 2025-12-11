@@ -2,7 +2,6 @@ package com.lunchconnect.infrastructure.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,10 +11,10 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.security.core.GrantedAuthority;
-import java.util.stream.Collectors;
-import java.util.List;
 
 @Component
 public class JwtTokenProvider {
@@ -29,32 +28,35 @@ public class JwtTokenProvider {
     private long jwtExpirationMs;
 
     private SecretKey getSigningKey() {
-        byte[] keyBytes = jwtSecret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     public String generateToken(Authentication authentication) {
+
+        // Usuario autenticado
         String username = authentication.getName();
+
+        // Fecha
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationMs);
 
-        // 💡 EXTRAER ROLES Y CONVERTIR A LISTA DE STRINGS
-        List<String> roles = authentication.getAuthorities().stream()
+        // Roles
+        List<String> roles = authentication.getAuthorities()
+                .stream()
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
         String token = Jwts.builder()
-                .subject(username)
-                .issuedAt(now)
-                .expiration(expiryDate)
-                // 💡 AÑADIR LA CLAIM PERSONALIZADA 'roles'
+                .setSubject(username)        // <-- usa el username como subject
                 .claim("roles", roles)
+                .setIssuedAt(now)
+                .setExpiration(expiryDate)
                 .signWith(getSigningKey())
                 .compact();
 
         logger.debug("Token generado para usuario: {}", username);
-        logger.debug("Roles incluidos: {}", roles); // <--- Nuevo log
-        logger.debug("Expira en: {}", expiryDate);
+        logger.debug("Roles: {}", roles);
+        logger.debug("Expira: {}", expiryDate);
 
         return token;
     }
@@ -68,15 +70,7 @@ public class JwtTokenProvider {
     }
 
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-
-        String username = claims.getSubject();
-        logger.debug("Username extraído del token: {}", username);
-        return username;
+        return getClaimsFromToken(token).getSubject();
     }
 
     public boolean validateToken(String token) {
@@ -86,30 +80,21 @@ public class JwtTokenProvider {
                     .build()
                     .parseSignedClaims(token);
 
-            logger.debug("Token validado correctamente");
             return true;
-        } catch (SecurityException ex) {
-            logger.error("Firma JWT inválida: {}", ex.getMessage());
-        } catch (MalformedJwtException ex) {
-            logger.error("Token JWT malformado: {}", ex.getMessage());
-        } catch (ExpiredJwtException ex) {
-            logger.error("Token JWT expirado: {}", ex.getMessage());
-        } catch (UnsupportedJwtException ex) {
-            logger.error("Token JWT no soportado: {}", ex.getMessage());
-        } catch (IllegalArgumentException ex) {
-            logger.error("JWT claims string vacío: {}", ex.getMessage());
+
+        } catch (JwtException | IllegalArgumentException e) {
+            logger.error("Error validando token: {}", e.getMessage());
         }
         return false;
     }
 
     public Long getUserIdFromToken(String token) {
-        String userIdString = getUsernameFromToken(token);
+        String subject = getUsernameFromToken(token);
         try {
-            // Convierte el ID (que es el subject del token) a Long
-            return Long.parseLong(userIdString);
+            return Long.parseLong(subject);
         } catch (NumberFormatException e) {
-            logger.error("El subject del token no es un Long válido: {}", userIdString);
-            throw new MalformedJwtException("ID de usuario en el token no es un número válido.");
+            logger.error("Subject del token no es un ID válido: {}", subject);
+            throw new MalformedJwtException("ID inválido en token");
         }
     }
 }
