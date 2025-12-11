@@ -17,7 +17,6 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    // Inyección con la clase correcta
     private final JwtTokenProvider tokenProvider;
 
     @Override
@@ -30,10 +29,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
 
-        registry.addEndpoint("/ws")
+        registry
+                .addEndpoint("/ws")
+                .addInterceptors(new WebSocketAuthInterceptor(tokenProvider))
                 .setAllowedOriginPatterns("*")
-                .withSockJS()
-                // Creación del interceptor con el tokenProvider inyectado
-                .setInterceptors(new WebSocketAuthInterceptor(tokenProvider));
+                .withSockJS(); // ✔ OBLIGATORIO si el front está en Vercel
     }
 }
