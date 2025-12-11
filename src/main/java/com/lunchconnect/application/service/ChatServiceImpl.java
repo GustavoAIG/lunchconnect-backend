@@ -11,7 +11,6 @@ import com.lunchconnect.infrastructure.exception.NotFoundException; // Importar
 import com.lunchconnect.infrastructure.websocket.ChatWebSocketHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional; // Importar
 
@@ -24,7 +23,6 @@ import java.util.UUID;
 @Slf4j
 public class ChatServiceImpl implements ChatService {
 
-    private final SimpMessagingTemplate messagingTemplate;
 
     // 💡 INYECCIONES NECESARIAS PARA PERSISTIR EVENTOS DEL SISTEMA
     private final MensajeRepository mensajeRepository;
