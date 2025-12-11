@@ -74,6 +74,8 @@ public class SecurityConfig {
         return source;
     }
 
+    // Código dentro de tu SecurityFilterChain
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -81,16 +83,25 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Rutas públicas
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/restaurantes/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/grupos").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+
+                        // Todas las demás requieren autenticación, incluyendo /api/amigos/**
                         .anyRequest().authenticated()
                 )
                 .authenticationProvider(authenticationProvider())
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class) // ✅ Rate limiting
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
+                // 🛑 CORRECCIÓN DE FILTROS: Usa addFilterAfter para asegurar la secuencia
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class) // 1. Rate Limit
+                .addFilterAfter(jwtAuthenticationFilter, rateLimitFilter.getClass())        // 2. JWT Validation
+
+                // Si la línea .addFilterAfter falla, usa la original, pero ASEGÚRATE de la secuencia:
+                // .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
                 .build();
     }
 }
