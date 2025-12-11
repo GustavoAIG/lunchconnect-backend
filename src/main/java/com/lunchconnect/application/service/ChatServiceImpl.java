@@ -112,7 +112,6 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     public void sendMessage(ChatMessage chatMessage) {
-        // El envío real se hace usando ChatWebSocketHandler
         chatWebSocketHandler.handleTextMessageDirectly(chatMessage);
     }
 
