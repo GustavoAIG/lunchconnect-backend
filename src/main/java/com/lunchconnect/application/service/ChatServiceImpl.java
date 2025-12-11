@@ -31,7 +31,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatWebSocketHandler chatWebSocketHandler; // inyect
     private static final String SYSTEM_SENDER = "SYSTEM"; // Remitente para mensajes del sistema
 
-    // Método auxiliar para construir y guardar un mensaje de sistema
+    // Metodo auxiliar para construir y guardar un mensaje de sistema
     @Transactional // Asegura que la persistencia ocurre
     private void persistAndBroadcastSystemMessage(Long grupoId, String content, Mensaje.TipoMensaje tipo) {
         Grupo grupo = grupoRepository.findById(grupoId)
@@ -57,7 +57,7 @@ public class ChatServiceImpl implements ChatService {
                 .build();
 
         // Enviar a través del handler
-        chatWebSocketHandler.broadcastToGroup(grupoId, systemMessage);
+        chatWebSocketHandler.handleTextMessageDirectly(systemMessage);
     }
 
     // ----------------------------------------------------------------------------------
