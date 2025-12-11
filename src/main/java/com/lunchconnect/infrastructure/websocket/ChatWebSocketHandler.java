@@ -28,15 +28,16 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) {
         log.info("Nueva conexión WebSocket: {}", session.getId());
 
-        // Registrar sesión de usuario para chats privados si existe userId en headers
-        String userIdHeader = session.getAttributes().get("userId") != null ?
-                session.getAttributes().get("userId").toString() : null;
-
-        if (userIdHeader != null) {
-            Long userId = Long.parseLong(userIdHeader);
+        // Registrar sesión de usuario para chats privados
+        Object userIdObj = session.getAttributes().get("userId");
+        if (userIdObj instanceof Long userId) {
             sessionsByUser.computeIfAbsent(userId, k -> ConcurrentHashMap.newKeySet()).add(session);
+            log.info("Sesión registrada para userId: {}", userId);
+        } else {
+            log.warn("No se encontró userId en los atributos de la sesión {}", session.getId());
         }
     }
+
 
     // Enviar mensaje a todos los usuarios de un grupo
     public void handleTextMessageDirectly(ChatMessage chatMessage) {
